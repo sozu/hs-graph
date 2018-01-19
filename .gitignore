@@ -1,0 +1,4 @@
+.stack-work/
+hs-graph.cabal
+*~
+**/.DS_Store
