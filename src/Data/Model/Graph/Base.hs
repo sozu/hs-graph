@@ -115,14 +115,14 @@ instance (GraphContainer g a) => GraphContainer (g :><: b) a where
     values ((:><:) graph _) = values graph
     replace ((:><:) parent graph) vs = replace parent vs :><: graph
 
-firstOf :: forall g a. (GraphContainer g a)
+firstOf :: forall a g. (GraphContainer g a)
         => g
         -> Maybe (Cursor a)
 firstOf graph = case length (values graph :: [a]) of
                 0 -> Nothing
                 v -> Just (Cursor 0 :: Cursor a)
 
-lastOf :: forall g a. (GraphContainer g a)
+lastOf :: forall a g. (GraphContainer g a)
        => g
        -> Maybe (Cursor a)
 lastOf graph = case length (values graph :: [a]) of
