@@ -42,6 +42,8 @@ data Graph a = Graph [a]
 -- 'MyGraph' can hold values of B and C in addition to A.
 data g :><: a = (:><:) g [a]
 
+infixl 4 :><:
+
 -- | This class declares a method to create a graph object.
 -- You should use this method instead of value constructor to generate inner lists holding values of multiple types.
 class GraphFactory g where
@@ -136,6 +138,8 @@ lastOf graph = case length (values graph :: [a]) of
 
 -- | Type operator representing an edge from left type to right type.
 type (a :- b) = Edge a b
+
+infixl 5 :-
 
 type Edge a b = EdgeT a b '[]
 
