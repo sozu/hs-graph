@@ -150,14 +150,14 @@ import Control.Monad.State
 
 _edgesFrom :: (GraphContainer g (EdgeT a b rs))
            => CursorT a rs -> g -> [EdgeT a b rs]
-_edgesFrom (Cursor index) graph = (filter match (values graph))
+_edgesFrom c graph = (filter match (values graph))
     where
         match :: EdgeT a b rs -> Bool
-        match edge = let (Cursor i) = edgeFrom edge in index == i
+        match edge = cursorIndex (edgeFrom edge) == cursorIndex c
 
 _edgesTo :: (GraphContainer g (EdgeT b a rs))
          => CursorT a rs -> g -> [EdgeT b a rs]
-_edgesTo (Cursor index) graph = (filter match (values graph))
+_edgesTo c graph = (filter match (values graph))
     where
         match :: EdgeT b a rs -> Bool
-        match edge = let (Cursor i) = edgeTo edge in index == i
+        match edge = cursorIndex (edgeTo edge) == cursorIndex c

@@ -9,6 +9,7 @@
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 
 module Data.Model.Graph.Base (
     Graph(..)
@@ -18,10 +19,12 @@ module Data.Model.Graph.Base (
     , CursorT(..)
     , Cursor
     , (+|), (-|)
+    , cursorIndex
     , EdgeT(..)
     , Edge
     , (:-)
     , (:+|)
+    , valuesOf, cursorsOf, cursorsOf'
     , firstOf, lastOf
     , Serialize
     , serialize
@@ -78,6 +81,11 @@ instance Show (CursorT a rs) where
     show (Cursor index) = "Cursor " ++ show index
     show (CursorT index) = "Cursor " ++ show index
 
+cursorIndex :: CursorT a rs
+            -> Int
+cursorIndex (Cursor index) = index
+cursorIndex (CursorT index) = index
+
 (+|) :: Proxy (rs :: [*])
      -> Cursor a
      -> CursorT a rs
@@ -116,6 +124,21 @@ instance (GraphFactory a) => GraphContainer (a :><: b) b where
 instance (GraphContainer g a) => GraphContainer (g :><: b) a where
     values ((:><:) graph _) = values graph
     replace ((:><:) parent graph) vs = replace parent vs :><: graph
+
+valuesOf :: forall a g. (GraphContainer g a)
+         => g
+         -> [a]
+valuesOf graph = values graph :: [a]
+
+cursorsOf :: forall a rs g. (GraphContainer g a)
+          => g
+          -> [CursorT a rs]
+cursorsOf graph = map ((Proxy :: Proxy rs) +|) $ fst $ serializeCursor graph (Proxy :: Proxy '[a])
+
+cursorsOf' :: forall a g. (GraphContainer g a)
+           => g
+           -> [Cursor a]
+cursorsOf' graph = fst $ serializeCursor graph (Proxy :: Proxy '[a])
 
 firstOf :: forall a g. (GraphContainer g a)
         => g
@@ -158,6 +181,8 @@ instance Show (EdgeT a b rs) where
 type family (:+|) a b :: * where
     (:+|) (EdgeT a b rs) r = EdgeT a b (r ': rs)
     (:+|) (CursorT a rs) r = CursorT a (r ': rs)
+
+infixl 4 :+|
 
 -- | Serialize extracts all node types in the graph in the order of dependencies.
 type family Serialize g :: [*] where
