@@ -25,7 +25,7 @@ import Control.Monad.State
      => CursorT a rs -- ^ A cursor indicating a value.
      -> g -- ^ A graph.
      -> a -- ^ A value in the graph indicated by the cursor.
-(@<) (Cursor index) graph = (values graph) !! index
+(@<) c graph = (values graph) !! (cursorIndex c)
 
 -- | Get cursors related by a cursor.
 (@*<) :: (GraphContainer g (EdgeT a b rs))
@@ -61,8 +61,9 @@ import Control.Monad.State
      => a -- ^ New value.
      -> CursorT a rs -- ^ A cursor indicating a value to replace.
      -> (g -> g) -- ^ A function which executes the replacement in the graph of an argument and returns modified graph.
-(/<) v (Cursor index) = \graph ->
+(/<) v c = \graph ->
         let vs = values graph
+            index = cursorIndex c
         in replace graph $ take index vs ++ v:(drop (index+1) vs)
 
 -- | Update a value indicated by a cursor.

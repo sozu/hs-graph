@@ -14,6 +14,7 @@
 module Data.Model.Graph.Base (
     Graph(..)
     , (:><:)
+    , (:++:)
     , GraphFactory(..)
     , GraphContainer(..)
     , CursorT(..)
@@ -45,7 +46,20 @@ data Graph a = Graph [a]
 -- 'MyGraph' can hold values of B and C in addition to A.
 data g :><: a = (:><:) g [a]
 
+-- | Concatenates graphs or nodes of graphs.
+-- If RHS type is a @Graph a@, its nodes are extracted and concatenated to LHS type.
+--
+-- > Graph a :++: Graph b == Graph a :><: b
+-- > Graph a :><: b :++: Graph c == Graph a :><: b :><: c
+-- > Graph a :++: (Graph b :><: c) == Graph a :><: b :><: c
+-- > Graph a :++: (b :><: c) == Graph a :><: b :><: c
+type family (:++:) (a :: *) (b :: *) where
+    a :++: (bs :><: b)       = a :++: bs :><: b
+    a :++: (Graph b)         = a :><: b
+    a :++: b                 = a :><: b
+
 infixl 4 :><:
+infixl 4 :++:
 
 -- | This class declares a method to create a graph object.
 -- You should use this method instead of value constructor to generate inner lists holding values of multiple types.
@@ -62,37 +76,34 @@ instance GraphFactory (Graph a) where
 instance (GraphFactory g) => GraphFactory (g :><: a) where
     newGraph = newGraph :><: ([] :: [a])
 
--- | Cursor indicates a value in a graph.
--- Unused type parameter denotes the type of a value indicated by this cursor.
--- 
--- Currently, cursor is just an index of the inner list.
--- This feature may be changed to enable convenient functions, i.e.,
--- - Removal of values from a graph.
--- - Preventing using cursor to a graph other than the graph it is obtained.
---data CursorT a rs = Cursor Int deriving (Show)
-
-type Cursor a = CursorT a '[]
-
+-- | This type holds the index of a value contained in a graph.
+-- @a@ Denotes the type of the value.
+-- @rs@ are qualified types available for any purpose to supply additional information to the value type.
 data CursorT a (rs :: [*]) where
     Cursor :: Int -> CursorT a '[]
     CursorT :: Int -> CursorT a rs
+
+type Cursor a = CursorT a '[]
 
 instance Show (CursorT a rs) where
     show (Cursor index) = "Cursor " ++ show index
     show (CursorT index) = "Cursor " ++ show index
 
-cursorIndex :: CursorT a rs
-            -> Int
+-- | Returns an index of the cursor.
+cursorIndex :: CursorT a rs -- ^ A cursor.
+            -> Int -- ^ The index of the cursor.
 cursorIndex (Cursor index) = index
 cursorIndex (CursorT index) = index
 
-(+|) :: Proxy (rs :: [*])
-     -> Cursor a
-     -> CursorT a rs
+-- | Qualifies a cursor with additional informative types.
+(+|) :: Proxy (rs :: [*]) -- ^ Additional types.
+     -> Cursor a -- ^ A cursor.
+     -> CursorT a rs -- ^ Qualified cursor.
 (+|) _ (Cursor index) = CursorT index
 
-(-|) :: CursorT a rs
-     -> Cursor a
+-- | Removes additional informative types from a cursor.
+(-|) :: CursorT a rs -- ^ A cursor.
+     -> Cursor a -- ^ Unqualified cursor.
 (-|) (Cursor index) = Cursor index
 (-|) (CursorT index) = Cursor index
 
@@ -110,54 +121,51 @@ class (GraphFactory g) => GraphContainer g a where
             -> [a] -- ^ Node of type a.
             -> g -- ^ Modified graph.
 
--- 親がGraph aならばaのコンテナを持つという実装。
 instance GraphContainer (Graph a) a where
     values (Graph vs) = vs
     replace (Graph _) vs = Graph vs
 
--- 子がbならば、bのコンテナを持つという実装。
 instance (GraphFactory a) => GraphContainer (a :><: b) b where
     values ((:><:) _ vs) = vs
     replace ((:><:) graph _) vs = graph :><: vs
 
--- 親がaのコンテナを持つ何かならば、aのコンテナを持つという実装。
 instance (GraphContainer g a) => GraphContainer (g :><: b) a where
     values ((:><:) graph _) = values graph
     replace ((:><:) parent graph) vs = replace parent vs :><: graph
 
+-- | Obtains values of the specified type from a graph.
 valuesOf :: forall a g. (GraphContainer g a)
-         => g
-         -> [a]
+         => g -- ^ A graph.
+         -> [a] -- ^ Values of @a@.
 valuesOf graph = values graph :: [a]
 
+-- | Obtains cursors of the specified type from a graph.
 cursorsOf :: forall a rs g. (GraphContainer g a)
-          => g
-          -> [CursorT a rs]
+          => g -- ^ A graph.
+          -> [CursorT a rs] -- ^ Cursors of @a@.
 cursorsOf graph = map ((Proxy :: Proxy rs) +|) $ fst $ serializeCursor graph (Proxy :: Proxy '[a])
 
+-- | Obtains unqualified cursors of the specified type from a graph.
 cursorsOf' :: forall a g. (GraphContainer g a)
-           => g
-           -> [Cursor a]
+           => g -- ^ A graph.
+           -> [Cursor a] -- ^ Unqualified cursors of @a@.
 cursorsOf' graph = fst $ serializeCursor graph (Proxy :: Proxy '[a])
 
+-- | Returns the cursor for the first value of the specified type from a graph.
 firstOf :: forall a g. (GraphContainer g a)
-        => g
-        -> Maybe (Cursor a)
+        => g -- ^ A graph.
+        -> Maybe (Cursor a) -- ^ The cursor for the first value if exists.
 firstOf graph = case length (values graph :: [a]) of
                 0 -> Nothing
                 v -> Just (Cursor 0 :: Cursor a)
 
+-- | Returns the cursor for the last value of the specified type from a graph.
 lastOf :: forall a g. (GraphContainer g a)
-       => g
-       -> Maybe (Cursor a)
+       => g -- ^ A graph.
+       -> Maybe (Cursor a) -- ^ The cursor for the last value if exists.
 lastOf graph = case length (values graph :: [a]) of
                 0 -> Nothing
                 v -> Just (Cursor (v-1) :: Cursor a)
-
--- | Edge is defined by two cursors each of which is an endpoint of the edge.
---data Edge a b = Edge { edgeFrom :: Cursor a, edgeTo :: Cursor b }
---              | Edge' a b
---              deriving (Show)
 
 -- | Type operator representing an edge from left type to right type.
 type (a :- b) = Edge a b
@@ -166,8 +174,9 @@ infixl 5 :-
 
 type Edge a b = EdgeT a b '[]
 
-data Relations 
-
+-- | This type represents an edge between two nodes in a graph.
+-- @a@ and @b@ denote data types of the nodes.
+-- @rs@ are qualified types available for any purpose to supply additional information to the edge.
 data EdgeT a b (rs :: [*]) where
     Edge :: { edgeFrom :: CursorT a rs
             , edgeTo :: Cursor b
@@ -178,6 +187,7 @@ data EdgeT a b (rs :: [*]) where
 instance Show (EdgeT a b rs) where
     show e = "(" ++ show (edgeFrom e) ++ ", " ++ show (edgeTo e) ++ ")"
 
+-- | Qualifies an edge type with additional informative type.
 type family (:+|) a b :: * where
     (:+|) (EdgeT a b rs) r = EdgeT a b (r ': rs)
     (:+|) (CursorT a rs) r = CursorT a (r ': rs)
@@ -239,15 +249,3 @@ type family HasEdge a b g :: Bool where
 type family Or (a :: Bool) (b :: Bool) :: Bool where
     Or 'True _ = 'True
     Or 'False b = b
-
---type family Edges g :: [Edge * *] where
---    Edges (xs :><: Edge a b) = Append b (Edges xs)
---    Edges (xs :><: x) = Edges xs
---    Edges (Edge a b) = '[b]
---    Edges _ = '[]
---
---type family EdgesFrom g (a :: *) :: [*] where
---    EdgesFrom (xs :><: Edge a b) a = Append b (EdgesFrom xs a)
---    EdgesFrom (xs :><: x) a = EdgesFrom xs a
---    EdgesFrom (Edge a b) a = '[b]
---    EdgesFrom _ a = '[]
