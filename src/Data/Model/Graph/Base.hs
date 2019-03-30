@@ -10,6 +10,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Data.Model.Graph.Base (
     Graph(..)
@@ -137,7 +138,7 @@ instance (GraphContainer g a) => GraphContainer (g :><: b) a where
 valuesOf :: forall a g. (GraphContainer g a)
          => g -- ^ A graph.
          -> [a] -- ^ Values of @a@.
-valuesOf graph = values graph :: [a]
+valuesOf graph = reverse $ values graph :: [a]
 
 -- | Obtains cursors of the specified type from a graph.
 cursorsOf :: forall a rs g. (GraphContainer g a)
@@ -181,8 +182,9 @@ data EdgeT a b (rs :: [*]) where
     Edge :: { edgeFrom :: CursorT a rs
             , edgeTo :: Cursor b
             } -> EdgeT a b rs
-    Edge' :: a -> b -> Edge a b
-    EdgeT' :: a -> b -> Proxy rs -> EdgeT a b rs
+
+instance Eq (EdgeT a b rs) where
+    e1 == e2 = (cursorIndex (edgeFrom e1) == cursorIndex (edgeFrom e2)) && (cursorIndex (edgeTo e1) == cursorIndex (edgeTo e2))
 
 instance Show (EdgeT a b rs) where
     show e = "(" ++ show (edgeFrom e) ++ ", " ++ show (edgeTo e) ++ ")"
@@ -200,11 +202,11 @@ type family Serialize g :: [*] where
 
 -- | Extract nodes of the first type of types listed in proxy argument.
 -- This function also returns a proxy of subsequent types which is available for looping operation.
-serialize :: (GraphContainer g a)
+serialize :: forall g a proxy xs. (GraphContainer g a)
           => g -- ^ A graph.
           -> proxy (a ': xs) -- ^ A proxy of types.
           -> ([a], Proxy xs) -- ^ Nodes of the first type and a proxy of subsequent types.
-serialize graph p = (values graph, Proxy :: Proxy xs)
+serialize graph p = (valuesOf @a graph, Proxy :: Proxy xs)
 
 -- | Like serialize, but returns cusrors instead of nodes.
 serializeCursor :: (GraphContainer g a)

@@ -37,6 +37,16 @@ executables:
     dependencies:
     - hs-graph
 
+  hs-graph-profile:
+    main:                Main.hs
+    source-dirs:         profile
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - hs-graph
+
 tests:
   hs-graph-test:
     main:                Spec.hs
@@ -47,3 +57,4 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - hs-graph
+    - hspec
