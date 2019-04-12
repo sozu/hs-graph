@@ -27,6 +27,7 @@ module Data.Model.Graph.Base (
     , (:-)
     , (:+|)
     , valuesOf, cursorsOf, cursorsOf'
+    , reversedValuesOf
     , firstOf, lastOf
     , Serialize
     , serialize
@@ -139,6 +140,14 @@ valuesOf :: forall a g. (GraphContainer g a)
          => g -- ^ A graph.
          -> [a] -- ^ Values of @a@.
 valuesOf graph = reverse $ values graph :: [a]
+
+-- | Obtains values of the specified type from a graph in reversed order.
+--
+-- This function is faster than @valuesOf@ because values are stored in graph in reversed order.
+reversedValuesOf :: forall a g. (GraphContainer g a)
+                 => g -- ^ A graph.
+                 -> [a] -- ^ Values of @a@.
+reversedValuesOf = values
 
 -- | Obtains cursors of the specified type from a graph.
 cursorsOf :: forall a rs g. (GraphContainer g a)

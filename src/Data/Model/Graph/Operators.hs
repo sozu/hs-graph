@@ -157,7 +157,7 @@ _edgesFrom :: (GraphContainer g (EdgeT a b rs))
            => CursorT a rs
            -> g
            -> [EdgeT a b rs]
-_edgesFrom c graph = (filter match (valuesOf graph))
+_edgesFrom c graph = reverse (filter match (values graph))
     where
         match :: EdgeT a b rs -> Bool
         match edge = cursorIndex (edgeFrom edge) == cursorIndex c
@@ -166,7 +166,7 @@ _edgesTo :: (GraphContainer g (EdgeT b a rs))
          => CursorT a rs
          -> g
          -> [EdgeT b a rs]
-_edgesTo c graph = (filter match (valuesOf graph))
+_edgesTo c graph = reverse (filter match (values graph))
     where
         match :: EdgeT b a rs -> Bool
         match edge = cursorIndex (edgeTo edge) == cursorIndex c
